@@ -19,15 +19,22 @@ local sounds = script:WaitForChild("Sounds")
 local gui = script.Parent
 local invBase = gui:WaitForChild("Base")
 local invTypes = gui:WaitForChild("Types")
+local invIndex = gui:WaitForChild("Index")
+local invMargin = invBase:WaitForChild("Margin")
 local invKeybinds = gui:WaitForChild("BuildingKeybinds")
 local invActions = gui:WaitForChild("Actions")
-local openButton = gui:WaitForChild("Open")
+local openIndexButton = gui:WaitForChild("OpenIndex")
 local gridButton = gui:WaitForChild("Grid")
 local rotateButton = gui:WaitForChild("Rotate")
 
-local invMargin = invBase:WaitForChild("Margin")
+local indexMargin = invIndex:WaitForChild("Margin")
+local indexFound = indexMargin:WaitForChild("Found")
+local indexNotFound = indexMargin:WaitForChild("NotFound")
 
-local open = false
+invIndex.Size = UDim2.new(0,0,0,0)
+invIndex.Visible = false
+
+local indexOpen = false
 local selectedMenu
 
 local plr = game.Players.LocalPlayer
@@ -365,11 +372,71 @@ local function clickItem(item, parent)
 
 end
 
+local function updateIndex()
+	
+	local path = Items:FindFirstChild(selectedMenu)
+	
+	if not path then return end
+	
+	for _, currentItem in indexFound:GetChildren() do
+		
+		if currentItem:IsA("ImageButton") then
+			
+			currentItem:Destroy()
+			
+		end
+		
+	end
+	
+	for _, currentItem in indexNotFound:GetChildren() do
+
+		if currentItem:IsA("ImageButton") then
+
+			currentItem:Destroy()
+
+		end
+
+	end
+	
+	for _, item in path:GetChildren() do
+		
+		local itemInInv = plrInventory[selectedMenu][item.Name]
+		
+		local newIndexItem = invTemplate:Clone()
+		newIndexItem.Name = item.Name
+		
+		local itemPart = path[item.Name]:Clone()
+		
+		local model3d = Mod3d:Attach3D(newIndexItem["Item"], itemPart)
+		model3d.ZIndex = 5
+
+		model3d:SetDepthMultiplier(1.6)
+		model3d.Camera.FieldOfView = 75
+
+		model3d.Visible = true
+		
+		if itemInInv.Value > 0 then
+
+			newIndexItem.Parent = indexFound
+			newIndexItem:FindFirstChild("Amount").Text = item.Name
+
+		else
+
+			newIndexItem.Parent = indexNotFound
+			newIndexItem:FindFirstChild("Amount").Text = "???"
+
+		end
+		
+	end
+
+end
+
 local function updateSelectedMenu(which)
 
 	if not which then warn("no menu selected to update") return end
 
 	selectedMenu = which
+	updateIndex()
 
 	for _, v in invTypes:GetChildren() do
 
@@ -426,58 +493,6 @@ local function updateSelectedMenu(which)
 
 end
 
-local function openInv()
-
-	if open == false then
-
-		invMargin.ScrollingEnabled = true
-
-		sounds["Bag Close"]:Play()
-
-		invBase:TweenSize(
-			UDim2.new(0.571, 0,0.427, 0),
-			Enum.EasingDirection.Out,
-			Enum.EasingStyle.Back,
-			0.5,
-			true
-		)
-
-		invTypes:TweenPosition(
-			UDim2.new(0.214, 0,0.5, 0),
-			Enum.EasingDirection.Out,
-			Enum.EasingStyle.Back,
-			0.5,
-			true
-		)
-
-		open = true
-
-	else
-
-		invMargin.ScrollingEnabled = false
-
-		invBase:TweenSize(
-			UDim2.new(0.571, 0,0.082, 0),
-			Enum.EasingDirection.Out,
-			Enum.EasingStyle.Back,
-			0.5,
-			true
-		)
-
-		invTypes:TweenPosition(
-			UDim2.new(0.214, 0,0.846, 0),
-			Enum.EasingDirection.Out,
-			Enum.EasingStyle.Back,
-			0.5,
-			true
-		)
-
-		open = false
-
-	end
-
-end
-
 local function changeMenu(menu)
 
 	-- hide everything
@@ -493,7 +508,7 @@ local function changeMenu(menu)
 		invKeybinds.Visible = false
 		invTypes.Visible = false
 		gridButton.Visible = false
-		openButton.Visible = false
+		openIndexButton.Visible = false
 		rotateButton.Visible = false
 
 	end
@@ -506,7 +521,7 @@ local function changeMenu(menu)
 		invKeybinds.Visible = true
 		invTypes.Visible = true
 		gridButton.Visible = true
-		openButton.Visible = true
+		openIndexButton.Visible = true
 		rotateButton.Visible = true
 
 	end
@@ -521,6 +536,42 @@ local function changeMenu(menu)
 
 	if menu == "None" then return end
 
+end
+
+local function openIndex()
+	
+	if indexOpen == false then
+		
+		indexOpen = true
+		invIndex.Visible = true
+		
+		sounds["Bag Close"]:Play()
+		
+		invIndex:TweenSize(
+			UDim2.new(0.571,0,0.63,0),
+			Enum.EasingDirection.Out,
+			Enum.EasingStyle.Back,
+			0.25,
+			true
+		)
+		
+	else
+		
+		invIndex:TweenSize(
+			UDim2.new(0,0,0,0),
+			Enum.EasingDirection.In,
+			Enum.EasingStyle.Back,
+			0.25,
+			true,
+			function()
+				invIndex.Visible = false
+			end
+		)
+		
+		indexOpen = false
+		
+	end
+	
 end
 
 for i, v in Types do
@@ -584,38 +635,13 @@ for _, v in invActions:GetChildren() do
 
 end
 
-openButton.MouseButton1Click:Connect(openInv)
 gridButton.MouseButton1Click:Connect(changeGridSize)
 rotateButton.MouseButton1Click:Connect(changeRotateSize)
-
-openButton.MouseEnter:Connect(function() 
-	
-	sounds["Hover"]:Play() 
-	
-	openButton:FindFirstChild("ImageLabel"):TweenSize(
-		UDim2.new(0.95,0,0.95,0),
-		Enum.EasingDirection.Out,
-		Enum.EasingStyle.Back,
-		0.25,
-		true
-	)
-	
-end)
-
-openButton.MouseLeave:Connect(function() 
-
-	openButton:FindFirstChild("ImageLabel"):TweenSize(
-		UDim2.new(0.85,0,0.85,0),
-		Enum.EasingDirection.Out,
-		Enum.EasingStyle.Back,
-		0.25,
-		true
-	)
-
-end)
+openIndexButton.MouseButton1Click:Connect(openIndex)
 
 gridButton.MouseEnter:Connect(function() sounds["Hover"]:Play() end)
 rotateButton.MouseEnter:Connect(function() sounds["Hover"]:Play() end)
+openIndexButton.MouseEnter:Connect(function() sounds["Hover"]:Play() end)
 
 updateSelectedMenu("Testing")
 changeMenu("None")
